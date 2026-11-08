@@ -4,8 +4,8 @@ import AVFAudio
 @main
 struct IntervalosCasaApp: App {
     init() {
-        // Ambient audio mixes with Spotify, Music and other background audio.
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+        // Keep Spotify playing, while allowing interval cues through the silent switch.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
     }
 

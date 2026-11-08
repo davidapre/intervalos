@@ -3,7 +3,7 @@ import UIKit
 
 @MainActor
 final class IntervalTimer: ObservableObject {
-    enum Phase { case setup, work, rest, finished }
+    enum Phase { case setup, countdown, work, rest, finished }
 
     @Published var phase: Phase = .setup
     @Published var workMinutes = 1
@@ -16,6 +16,10 @@ final class IntervalTimer: ObservableObject {
     @Published var phaseDuration: TimeInterval = 60
     @Published var isPaused = false
     @Published var soundEnabled = true
+    @Published var workSound: CueSound = .double
+    @Published var restSound: CueSound = .low
+    @Published var countdownValue = 3
+    @Published var countdownIsGo = false
 
     private var deadline: Date?
     private let audio = AudioCuePlayer()
@@ -27,6 +31,7 @@ final class IntervalTimer: ObservableObject {
     var phaseTitle: String {
         if isPaused { return "PAUSA" }
         switch phase {
+        case .countdown: return "PREPÁRATE"
         case .work: return "EJERCICIO"
         case .rest: return "DESCANSO"
         case .finished: return "¡TERMINADO!"
@@ -34,10 +39,14 @@ final class IntervalTimer: ObservableObject {
         }
     }
 
-    var colorName: String { phase == .rest ? "rest" : "work" }
+    var displayValue: String {
+        if phase == .countdown { return countdownIsGo ? "¡YA!" : "\(countdownValue)" }
+        return format(remaining)
+    }
 
     var nextLabel: String {
         switch phase {
+        case .countdown: return countdownIsGo ? "¡Empieza!" : "El entrenamiento está a punto de comenzar"
         case .work:
             if restDuration > 0 { return "Después: descanso · \(format(restDuration))" }
             return currentRound < totalRounds ? "Después: siguiente ronda" : "Último intervalo"
@@ -51,12 +60,39 @@ final class IntervalTimer: ObservableObject {
         guard workDuration > 0 else { return }
         currentRound = 1
         isPaused = false
-        startPhase(.work, seconds: workDuration)
+        countdownValue = 3
+        countdownIsGo = false
+        phase = .countdown
+        phaseDuration = 1
+        remaining = 1
+        deadline = Date().addingTimeInterval(1)
+        if soundEnabled { audio.playCountdownTick() }
         UIApplication.shared.isIdleTimerDisabled = true
     }
 
     func tick(now: Date = Date()) {
-        guard isRunning, !isPaused, let deadline else { return }
+        guard let deadline else { return }
+
+        if phase == .countdown {
+            remaining = max(0, deadline.timeIntervalSince(now))
+            guard remaining <= 0 else { return }
+            if countdownIsGo {
+                startPhase(.work, seconds: workDuration, playCue: false)
+            } else if countdownValue > 1 {
+                countdownValue -= 1
+                remaining = 1
+                self.deadline = now.addingTimeInterval(1)
+                if soundEnabled { audio.playCountdownTick() }
+            } else {
+                countdownIsGo = true
+                remaining = 0.7
+                self.deadline = now.addingTimeInterval(0.7)
+                if soundEnabled { audio.play(workSound) }
+            }
+            return
+        }
+
+        guard isRunning, !isPaused else { return }
         remaining = max(0, deadline.timeIntervalSince(now))
         if remaining <= 0 { advance() }
     }
@@ -73,13 +109,15 @@ final class IntervalTimer: ObservableObject {
         }
     }
 
-    func skip() { if isRunning { advance() } }
-
-    func restart() {
-        currentRound = 1
-        isPaused = false
-        startPhase(.work, seconds: workDuration)
+    func skip() {
+        if phase == .countdown {
+            startPhase(.work, seconds: workDuration)
+        } else if isRunning {
+            advance()
+        }
     }
+
+    func restart() { start() }
 
     func edit() {
         deadline = nil
@@ -91,6 +129,9 @@ final class IntervalTimer: ObservableObject {
     func adjustRounds(_ amount: Int) {
         totalRounds = min(99, max(1, totalRounds + amount))
     }
+
+    func previewWorkSound() { if soundEnabled { audio.play(workSound) } }
+    func previewRestSound() { if soundEnabled { audio.play(restSound) } }
 
     func format(_ value: Int) -> String { format(TimeInterval(value)) }
 
@@ -113,12 +154,12 @@ final class IntervalTimer: ObservableObject {
         } else { finish() }
     }
 
-    private func startPhase(_ nextPhase: Phase, seconds: Int) {
+    private func startPhase(_ nextPhase: Phase, seconds: Int, playCue: Bool = true) {
         phase = nextPhase
         phaseDuration = TimeInterval(seconds)
         remaining = phaseDuration
         deadline = Date().addingTimeInterval(phaseDuration)
-        if soundEnabled { audio.play(work: nextPhase == .work) }
+        if soundEnabled && playCue { audio.play(nextPhase == .work ? workSound : restSound) }
     }
 
     private func finish() {

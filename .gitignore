@@ -2,6 +2,7 @@ IntervalosCasa.xcodeproj/
 build/
 Payload/
 *.ipa
+artifacts/
 *.xcarchive
 xcuserdata/
 .DS_Store

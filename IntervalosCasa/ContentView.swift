@@ -59,6 +59,13 @@ private struct SetupView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    Divider()
+                    VStack(alignment: .leading, spacing: 14) {
+                        Label("Sonidos", systemImage: "speaker.wave.2.fill")
+                            .fontWeight(.semibold)
+                        soundPicker("Ejercicio", selection: $timer.workSound, preview: timer.previewWorkSound)
+                        soundPicker("Descanso", selection: $timer.restSound, preview: timer.previewRestSound)
+                    }
                     Button(action: timer.start) {
                         Label("Empezar entrenamiento", systemImage: "play.fill")
                             .frame(maxWidth: .infinity).padding(.vertical, 8)
@@ -98,12 +105,32 @@ private struct SetupView: View {
         }
         .padding().background(Color.black.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))
     }
+
+    private func soundPicker(_ title: String, selection: Binding<CueSound>, preview: @escaping () -> Void) -> some View {
+        HStack {
+            Text(title).foregroundStyle(.secondary)
+            Spacer()
+            Picker(title, selection: selection) {
+                ForEach(CueSound.allCases) { sound in
+                    Text(sound.rawValue).tag(sound)
+                }
+            }
+            .labelsHidden()
+            Button(action: preview) {
+                Image(systemName: "play.circle.fill").font(.title3)
+            }
+            .buttonStyle(.plain)
+        }
+    }
 }
 
 private struct ActiveTimerView: View {
     @ObservedObject var timer: IntervalTimer
 
-    private var background: Color { timer.phase == .rest ? restColor : workColor }
+    private var background: Color {
+        if timer.phase == .countdown { return Color(red: 0.09, green: 0.13, blue: 0.11) }
+        return timer.phase == .rest ? restColor : workColor
+    }
     private var progress: Double { timer.phaseDuration > 0 ? timer.remaining / timer.phaseDuration : 0 }
 
     var body: some View {
@@ -126,8 +153,9 @@ private struct ActiveTimerView: View {
                 Circle().trim(from: 0, to: max(0, min(1, progress)))
                     .stroke(.white, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                Text(timer.format(timer.remaining))
-                    .font(.system(size: 70, weight: .medium, design: .monospaced)).tracking(-6)
+                Text(timer.displayValue)
+                    .font(.system(size: timer.phase == .countdown ? 82 : 70, weight: .medium, design: .monospaced))
+                    .tracking(timer.phase == .countdown ? -2 : -6)
             }
             .frame(maxWidth: 330).aspectRatio(1, contentMode: .fit)
             Text(timer.nextLabel).font(.footnote.weight(.semibold)).opacity(0.8)
@@ -137,7 +165,7 @@ private struct ActiveTimerView: View {
                 Button(action: timer.togglePause) {
                     Image(systemName: timer.isPaused ? "play.fill" : "pause.fill")
                         .font(.title2).foregroundStyle(.black).frame(width: 76, height: 76).background(.white, in: Circle())
-                }.disabled(timer.phase == .finished)
+                }.disabled(timer.phase == .finished || timer.phase == .countdown)
                 circleButton("forward.end.fill", action: timer.skip).disabled(timer.phase == .finished)
             }
             Button("Cambiar configuración", action: timer.edit)

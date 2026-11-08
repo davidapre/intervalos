@@ -29,7 +29,6 @@ private struct SetupView: View {
                         Image(systemName: timer.soundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
                     }
                     .buttonStyle(.bordered)
-                    .buttonBorderShape(.circle)
                 }
 
                 VStack(spacing: 8) {
@@ -114,7 +113,7 @@ private struct ActiveTimerView: View {
                 Spacer()
                 Button { timer.soundEnabled.toggle() } label: {
                     Image(systemName: timer.soundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                }.buttonStyle(.bordered).buttonBorderShape(.circle)
+                }.buttonStyle(.bordered)
             }
 
             Spacer()

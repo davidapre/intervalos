@@ -1,0 +1,50 @@
+name: Compilar IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    name: Crear IPA sin firmar
+    runs-on: macos-15
+    timeout-minutes: 20
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+
+      - name: Generar proyecto Xcode
+        run: xcodegen generate
+
+      - name: Compilar para iPhone
+        run: |
+          xcodebuild \
+            -project IntervalosCasa.xcodeproj \
+            -scheme IntervalosCasa \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build
+
+      - name: Empaquetar IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Intervalos.app Payload/
+          zip -r Intervalos.ipa Payload
+
+      - name: Publicar descarga
+        uses: actions/upload-artifact@v4
+        with:
+          name: Intervalos-IPA
+          path: Intervalos.ipa
+          if-no-files-found: error
+          retention-days: 30

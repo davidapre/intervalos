@@ -3,6 +3,7 @@ build/
 Payload/
 *.ipa
 artifacts/
+artifacts-v*/
 *.xcarchive
 xcuserdata/
 .DS_Store

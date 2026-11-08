@@ -20,6 +20,9 @@ final class IntervalTimer: ObservableObject {
     @Published var restSound: CueSound = .low
     @Published var countdownValue = 3
     @Published var countdownIsGo = false
+    @Published var workoutName = "Mi entrenamiento"
+    @Published var roundExercises: [Exercise] = [.burpees, .pushups, .squats, .plank, .mountainClimbers, .jumpingJacks, .burpees, .pushups]
+    @Published var loadedPlanID: UUID?
 
     private var deadline: Date?
     private let audio = AudioCuePlayer()
@@ -27,6 +30,8 @@ final class IntervalTimer: ObservableObject {
     var workDuration: Int { workMinutes * 60 + workSeconds }
     var restDuration: Int { restMinutes * 60 + restSeconds }
     var isRunning: Bool { phase == .work || phase == .rest }
+    var currentExercise: Exercise { exercise(at: currentRound) }
+    var nextExercise: Exercise { exercise(at: min(totalRounds, currentRound + 1)) }
 
     var phaseTitle: String {
         if isPaused { return "PAUSA" }
@@ -128,6 +133,42 @@ final class IntervalTimer: ObservableObject {
 
     func adjustRounds(_ amount: Int) {
         totalRounds = min(99, max(1, totalRounds + amount))
+        syncExerciseCount()
+    }
+
+    func setExercise(_ exercise: Exercise, for round: Int) {
+        syncExerciseCount()
+        guard round >= 1, round <= roundExercises.count else { return }
+        roundExercises[round - 1] = exercise
+    }
+
+    func load(_ plan: WorkoutPlan) {
+        loadedPlanID = plan.id
+        workoutName = plan.name
+        workMinutes = plan.workSeconds / 60
+        workSeconds = plan.workSeconds % 60
+        restMinutes = plan.restSeconds / 60
+        restSeconds = plan.restSeconds % 60
+        totalRounds = max(1, plan.rounds)
+        roundExercises = plan.exercises
+        workSound = plan.workSound
+        restSound = plan.restSound
+        syncExerciseCount()
+    }
+
+    func makePlan() -> WorkoutPlan {
+        syncExerciseCount()
+        let cleanName = workoutName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return WorkoutPlan(
+            id: loadedPlanID ?? UUID(),
+            name: cleanName.isEmpty ? "Mi entrenamiento" : cleanName,
+            workSeconds: workDuration,
+            restSeconds: restDuration,
+            rounds: totalRounds,
+            exercises: Array(roundExercises.prefix(totalRounds)),
+            workSound: workSound,
+            restSound: restSound
+        )
     }
 
     func previewWorkSound() { if soundEnabled { audio.play(workSound) } }
@@ -169,5 +210,21 @@ final class IntervalTimer: ObservableObject {
         isPaused = false
         UIApplication.shared.isIdleTimerDisabled = false
         if soundEnabled { audio.playFinish() }
+    }
+
+    private func exercise(at round: Int) -> Exercise {
+        guard !roundExercises.isEmpty else { return .burpees }
+        return roundExercises[max(0, min(roundExercises.count - 1, round - 1))]
+    }
+
+    private func syncExerciseCount() {
+        if roundExercises.isEmpty { roundExercises = [.burpees] }
+        while roundExercises.count < totalRounds {
+            let next = Exercise.allCases[roundExercises.count % Exercise.allCases.count]
+            roundExercises.append(next)
+        }
+        if roundExercises.count > totalRounds {
+            roundExercises = Array(roundExercises.prefix(totalRounds))
+        }
     }
 }

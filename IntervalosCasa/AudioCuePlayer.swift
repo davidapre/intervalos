@@ -1,6 +1,6 @@
 import AVFAudio
 
-enum CueSound: String, CaseIterable, Identifiable {
+enum CueSound: String, CaseIterable, Identifiable, Codable {
     case bright = "Agudo"
     case double = "Doble"
     case bell = "Campana"

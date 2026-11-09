@@ -6,6 +6,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: 5.9
+    MARKETING_VERSION: 1.3.0
+    CURRENT_PROJECT_VERSION: 1
     PRODUCT_BUNDLE_IDENTIFIER: com.intervalosencasa.app
     DEVELOPMENT_TEAM: ""
 targets:
@@ -24,6 +26,8 @@ targets:
       path: IntervalosCasa/Info.plist
       properties:
         CFBundleDisplayName: Intervalos
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+env:
+  APP_VERSION: 1.3.0
+
 jobs:
   build:
     name: Crear IPA sin firmar
@@ -33,18 +36,20 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            MARKETING_VERSION="${APP_VERSION}" \
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
             clean build
 
       - name: Empaquetar IPA
         run: |
           mkdir -p Payload
           cp -R build/Build/Products/Release-iphoneos/Intervalos.app Payload/
-          zip -r Intervalos.ipa Payload
+          zip -r "Intervalos-v${APP_VERSION}.ipa" Payload
 
       - name: Publicar descarga
         uses: actions/upload-artifact@v4
         with:
-          name: Intervalos-IPA
-          path: Intervalos.ipa
+          name: Intervalos-v${{ env.APP_VERSION }}-IPA
+          path: Intervalos-v${{ env.APP_VERSION }}.ipa
           if-no-files-found: error
           retention-days: 30

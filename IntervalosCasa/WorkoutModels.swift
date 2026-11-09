@@ -33,6 +33,9 @@ struct WorkoutPlan: Identifiable, Codable, Equatable {
     var restSound: CueSound
 
     var coverExercise: Exercise { exercises.first ?? .burpees }
+    var totalDuration: Int {
+        rounds * workSeconds + max(0, rounds - 1) * restSeconds
+    }
 
     static let intensive = WorkoutPlan(
         id: UUID(),

@@ -22,6 +22,7 @@ struct ContentView: View {
 private struct SetupView: View {
     @ObservedObject var timer: IntervalTimer
     @ObservedObject var workouts: WorkoutStore
+    @State private var exercisesExpanded = false
 
     var body: some View {
         ScrollView {
@@ -56,12 +57,43 @@ private struct SetupView: View {
                         .buttonStyle(.plain)
                     }
 
+                    HStack {
+                        Label("Tiempo del entrenamiento", systemImage: "clock.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(timer.format(timer.totalWorkoutDuration))
+                            .font(.title3.monospaced().weight(.bold))
+                            .foregroundStyle(inkColor)
+                    }
+                    .padding(12)
+                    .background(workColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+
                     Divider()
                     VStack(alignment: .leading, spacing: 12) {
-                        Label("Ejercicio de cada ronda", systemImage: "list.number")
-                            .fontWeight(.semibold)
-                        ForEach(0..<timer.totalRounds, id: \.self) { index in
-                            exerciseRow(index: index)
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.22)) {
+                                exercisesExpanded.toggle()
+                            }
+                        } label: {
+                            HStack {
+                                Label("Ejercicios de cada ronda", systemImage: "list.number")
+                                    .fontWeight(.semibold)
+                                Spacer()
+                                Text("\(timer.totalRounds)")
+                                    .font(.caption.monospaced().weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                Image(systemName: exercisesExpanded ? "chevron.up" : "chevron.down")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+
+                        if exercisesExpanded {
+                            ForEach(0..<timer.totalRounds, id: \.self) { index in
+                                exerciseRow(index: index)
+                            }
                         }
                     }
 
@@ -132,6 +164,8 @@ private struct SetupView: View {
                                 Text("\(plan.workSeconds)s / \(plan.restSeconds)s")
                                     .font(.caption.monospaced()).foregroundStyle(.secondary)
                                 Text("\(plan.rounds) rondas").font(.caption).foregroundStyle(.secondary)
+                                Text("\(formatDuration(plan.totalDuration)) tiempo entreno")
+                                    .font(.caption.monospaced().weight(.semibold)).foregroundStyle(workColor)
                             }
                             Button { timer.load(plan) } label: {
                                 Image(systemName: "arrow.down.circle.fill").font(.title3).foregroundStyle(workColor)
@@ -206,6 +240,10 @@ private struct SetupView: View {
             Button(action: preview) { Image(systemName: "play.circle.fill").font(.title3) }.buttonStyle(.plain)
         }
     }
+
+    private func formatDuration(_ seconds: Int) -> String {
+        String(format: "%02d:%02d", seconds / 60, seconds % 60)
+    }
 }
 
 private struct ActiveTimerView: View {
@@ -265,6 +303,11 @@ private struct ActiveTimerView: View {
 
             Text(timer.nextLabel).font(.footnote.weight(.semibold)).opacity(0.82)
 
+            HStack(spacing: 12) {
+                workoutClock(title: "LLEVA", value: timer.formatElapsed(timer.workoutElapsed))
+                workoutClock(title: "QUEDA", value: timer.format(timer.workoutRemaining))
+            }
+
             HStack(spacing: 24) {
                 circleButton("arrow.counterclockwise", action: timer.restart)
                 Button(action: timer.togglePause) {
@@ -289,6 +332,16 @@ private struct ActiveTimerView: View {
                 .background(.white.opacity(0.13), in: Circle())
                 .overlay(Circle().stroke(.white.opacity(0.35)))
         }
+    }
+
+    private func workoutClock(title: String, value: String) -> some View {
+        VStack(spacing: 4) {
+            Text(title).font(.caption2.bold()).tracking(1.4).opacity(0.72)
+            Text(value).font(.headline.monospaced().weight(.semibold))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(.white.opacity(0.13), in: RoundedRectangle(cornerRadius: 14))
     }
 }
 

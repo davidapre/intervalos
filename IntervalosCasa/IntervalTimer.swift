@@ -29,6 +29,28 @@ final class IntervalTimer: ObservableObject {
 
     var workDuration: Int { workMinutes * 60 + workSeconds }
     var restDuration: Int { restMinutes * 60 + restSeconds }
+    var totalWorkoutDuration: Int {
+        totalRounds * workDuration + max(0, totalRounds - 1) * restDuration
+    }
+    var workoutElapsed: TimeInterval {
+        switch phase {
+        case .setup, .countdown:
+            return 0
+        case .finished:
+            return TimeInterval(totalWorkoutDuration)
+        case .work:
+            let completedRounds = max(0, currentRound - 1)
+            let beforeCurrent = completedRounds * (workDuration + restDuration)
+            return TimeInterval(beforeCurrent) + max(0, TimeInterval(workDuration) - remaining)
+        case .rest:
+            let completedRounds = max(0, currentRound - 1)
+            let beforeCurrent = completedRounds * (workDuration + restDuration) + workDuration
+            return TimeInterval(beforeCurrent) + max(0, TimeInterval(restDuration) - remaining)
+        }
+    }
+    var workoutRemaining: TimeInterval {
+        max(0, TimeInterval(totalWorkoutDuration) - workoutElapsed)
+    }
     var isRunning: Bool { phase == .work || phase == .rest }
     var currentExercise: Exercise { exercise(at: currentRound) }
     var nextExercise: Exercise { exercise(at: min(totalRounds, currentRound + 1)) }
@@ -181,9 +203,14 @@ final class IntervalTimer: ObservableObject {
         return String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
 
+    func formatElapsed(_ value: TimeInterval) -> String {
+        let seconds = max(0, Int(floor(value)))
+        return String(format: "%02d:%02d", seconds / 60, seconds % 60)
+    }
+
     private func advance() {
         if phase == .work {
-            if restDuration > 0 {
+            if restDuration > 0 && currentRound < totalRounds {
                 startPhase(.rest, seconds: restDuration)
             } else if currentRound < totalRounds {
                 currentRound += 1
